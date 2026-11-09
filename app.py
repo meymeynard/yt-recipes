@@ -63,26 +63,11 @@ all_known_ingredients = set()
 for items in CATEGORIES.values():
     all_known_ingredients.update(items)
 
-# Preset Basket
-USER_INITIAL_BASKET = [
-    "ampalaya", "carrots", "okra", "calamansi", "green peas",
-    "chickpeas", "corn", "sayote", "chicken breast", "egg",
-    "salted egg", "ground pork", "red bell pepper", "lemon",
-    "mushroom", "red onion", "white onion", "garlic", "ginger",
-    "oyster sauce", "soy sauce"
-]
-
 # Initialize state on first run
 if "initialized" not in st.session_state:
     st.session_state["initialized"] = True
     for item in all_known_ingredients:
-        st.session_state[f"ing_{item}"] = (item in USER_INITIAL_BASKET)
-
-# Callbacks for Load Basket and Clear All
-def on_load_basket():
-    basket_set = set(USER_INITIAL_BASKET)
-    for item in all_known_ingredients:
-        st.session_state[f"ing_{item}"] = (item in basket_set)
+        st.session_state[f"ing_{item}"] = False
 
 def on_clear_all():
     for item in all_known_ingredients:
@@ -92,12 +77,8 @@ def on_clear_all():
 with st.sidebar:
     st.title("🍳 Pantry Inventory")
     
-    # Presets Buttons with explicit callbacks to toggle widget state
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        st.button("📋 Load My Basket", on_click=on_load_basket, use_container_width=True, help="Instantly checks your initial pantry basket.")
-    with col_btn2:
-        st.button("🗑️ Clear All", on_click=on_clear_all, use_container_width=True, help="Unchecks all ingredients in all categories.")
+    # Clear All button
+    st.button("🗑️ Clear All", on_click=on_clear_all, use_container_width=True, help="Unchecks all ingredients across all categories.")
 
     # ➕ User Story 1: Add custom ingredients to any category
     with st.expander("➕ Add Ingredient to Category", expanded=False):
@@ -165,7 +146,7 @@ if st.session_state["pantry"]:
     chips_html = "".join([f'<span class="metric-badge badge-green" style="margin: 2px;">✓ {item}</span>' for item in sorted(st.session_state["pantry"])])
     st.markdown(f"<div>{chips_html}</div>", unsafe_allow_html=True)
 else:
-    st.info("Your pantry is empty! Select ingredients in the sidebar or click '📋 Load My Basket'.")
+    st.info("Your pantry is empty! Select ingredients in the sidebar checklist.")
 
 st.write("")
 
