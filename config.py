@@ -8,7 +8,9 @@ def get_youtube_api_key() -> str:
     # 1. Check direct env variable
     api_key = os.environ.get("YOUTUBE_API_KEY")
     if api_key:
-        return api_key
+        clean_key = api_key.strip().strip('"').strip("'")
+        if clean_key:
+            return clean_key
 
     # 2. Try decrypting SOPS env file
     sops_path = Path(os.environ.get("SOPS_SECRETS_FILE", Path.home() / ".config/sops/secrets.enc.env"))
