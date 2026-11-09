@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 
 DB_PATH = Path(os.environ.get("DB_PATH", Path(__file__).parent / "recipes.db"))
 
@@ -42,6 +42,11 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 category_name TEXT NOT NULL,
                 ingredient_name TEXT NOT NULL UNIQUE
+            );
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_pantry (
+                ingredient_name TEXT PRIMARY KEY
             );
         """)
     conn.close()
@@ -146,4 +151,30 @@ def delete_custom_ingredient(ingredient_name: str):
     conn = get_connection()
     with conn:
         conn.execute("DELETE FROM custom_ingredients WHERE ingredient_name = ?", (ingredient_name.lower().strip(),))
+    conn.close()
+
+def get_user_pantry() -> Set[str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT ingredient_name FROM user_pantry")
+    rows = cursor.fetchall()
+    conn.close()
+    return {r["ingredient_name"] for r in rows}
+
+def toggle_user_pantry_item(ingredient_name: str, is_active: bool):
+    name = ingredient_name.lower().strip()
+    if not name:
+        return
+    conn = get_connection()
+    with conn:
+        if is_active:
+            conn.execute("INSERT OR IGNORE INTO user_pantry (ingredient_name) VALUES (?)", (name,))
+        else:
+            conn.execute("DELETE FROM user_pantry WHERE ingredient_name = ?", (name,))
+    conn.close()
+
+def clear_user_pantry():
+    conn = get_connection()
+    with conn:
+        conn.execute("DELETE FROM user_pantry")
     conn.close()

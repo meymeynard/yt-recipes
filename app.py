@@ -63,13 +63,22 @@ all_known_ingredients = set()
 for items in CATEGORIES.values():
     all_known_ingredients.update(items)
 
-# Initialize state on first run
+# Load saved pantry from SQLite
+saved_pantry = db.get_user_pantry()
+
+# Initialize state on first run or after refresh
 if "initialized" not in st.session_state:
     st.session_state["initialized"] = True
     for item in all_known_ingredients:
-        st.session_state[f"ing_{item}"] = False
+        st.session_state[f"ing_{item}"] = (item in saved_pantry)
+
+# Realtime toggle callback: updates SQLite as checkboxes are clicked
+def on_toggle_ingredient(item_name: str):
+    is_checked = st.session_state.get(f"ing_{item_name}", False)
+    db.toggle_user_pantry_item(item_name, is_checked)
 
 def on_clear_all():
+    db.clear_user_pantry()
     for item in all_known_ingredients:
         st.session_state[f"ing_{item}"] = False
 
@@ -89,28 +98,31 @@ with st.sidebar:
             if clean_name:
                 db.add_custom_ingredient(target_cat, clean_name)
                 parser.register_custom_ingredient(clean_name)
+                db.toggle_user_pantry_item(clean_name, True)
                 st.session_state[f"ing_{clean_name}"] = True
                 st.success(f"Added '{clean_name.title()}' to {target_cat}!")
                 st.rerun()
             else:
                 st.warning("Please type an ingredient name first.")
 
-    # Render category checklists
+    # Render category checklists with persistence callback
     for cat_name, items in CATEGORIES.items():
         if not items:
             continue
         with st.expander(cat_name, expanded=(cat_name in ["🥩 Proteins", "🥦 Vegetables"])):
             for item in items:
-                # Ensure key exists in session_state
+                # Ensure key exists in session_state matching SQLite
                 if f"ing_{item}" not in st.session_state:
-                    st.session_state[f"ing_{item}"] = False
-                st.checkbox(item.title(), key=f"ing_{item}")
+                    st.session_state[f"ing_{item}"] = (item in saved_pantry)
+                st.checkbox(
+                    item.title(),
+                    key=f"ing_{item}",
+                    on_change=on_toggle_ingredient,
+                    args=(item,)
+                )
 
-    # Derive active pantry directly from checkbox widget states
-    active_pantry = [
-        k[4:] for k, v in st.session_state.items()
-        if k.startswith("ing_") and v is True
-    ]
+    # Active pantry is always synced with SQLite
+    active_pantry = sorted(list(db.get_user_pantry()))
     st.session_state["pantry"] = active_pantry
 
     st.divider()
