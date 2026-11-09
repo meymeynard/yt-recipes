@@ -1,0 +1,14 @@
+services:
+  recipe-aggregator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pantry-chef
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - DB_PATH=/app/data/recipes.db
+    volumes:
+      - ./data:/app/data
