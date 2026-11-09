@@ -63,6 +63,18 @@ INGREDIENT_ALIASES: Dict[str, List[str]] = {
     "chicken broth": ["chicken broth", "chicken stock", "vegetable broth", "water or chicken broth", "chicken bouillon", "chicken cube"],
 }
 
+def register_custom_ingredient(name: str, aliases: Optional[List[str]] = None):
+    """Registers a new or custom ingredient into the alias matching dictionary."""
+    clean = name.lower().strip()
+    if not clean:
+        return
+    if clean not in INGREDIENT_ALIASES:
+        INGREDIENT_ALIASES[clean] = aliases or [clean]
+    elif aliases:
+        for a in aliases:
+            if a not in INGREDIENT_ALIASES[clean]:
+                INGREDIENT_ALIASES[clean].append(a)
+
 # Regex to pinpoint the ingredients section (only match true ingredient headers)
 START_MARKERS = [
     r'^\s*ingredients\s*[:\-]?',

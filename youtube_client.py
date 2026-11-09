@@ -1,3 +1,5 @@
+import re
+from urllib.parse import urlparse
 from typing import List, Dict, Any, Optional
 from googleapiclient.discovery import build
 import config
@@ -15,14 +17,13 @@ def get_youtube():
 DEFAULT_CHANNELS = [
     {
         "name": "Panlasang Pinoy",
-        "channel_id": "UC_j7xjUSs8b9Zc89qA4L9qA",
-        "uploads_playlist_id": "UU_j7xjUSs8b9Zc89qA4L9qA"
+        "channel_id": "UCIjw46txjW6oD4NU6FHaj_w",
+        "uploads_playlist_id": "UUIjw46txjW6oD4NU6FHaj_w"
     },
     {
         "name": "Simpol (Chef Tatung)",
-        "channel_id": "UCt4nI4bH-Wv_9l5s_8p36Lw",
-        # Simpol's upload playlist can be derived or fetched dynamically
-        "handle": "Simpol"
+        "channel_id": "UCVFRkFnGiYDKvHmtotmaAXw",
+        "uploads_playlist_id": "UUVFRkFnGiYDKvHmtotmaAXw"
     },
     {
         "name": "Kuya Fern's Cooking",
@@ -31,48 +32,101 @@ DEFAULT_CHANNELS = [
 ]
 
 def resolve_channel_uploads_id(channel_query: str) -> Optional[Dict[str, str]]:
-    """Resolves a channel name, handle, or ID to its upload playlist ID."""
+    """
+    Resolves a channel name, handle, channel ID, or full YouTube URL to its upload playlist ID.
+    Supports:
+    - https://www.youtube.com/@Handle
+    - https://www.youtube.com/channel/UCxxxxxxxxxxxx
+    - https://www.youtube.com/c/CustomName or /user/Name
+    - @Handle or raw UCxxxxxxxxxxxx ID
+    - Channel name search query (e.g. 'Panlasang Pinoy')
+    """
     yt = get_youtube()
+    clean = channel_query.strip()
     
-    # If standard channel ID (starts with UC)
-    if channel_query.startswith("UC") and len(channel_query) == 24:
-        return {
-            "channel_id": channel_query,
-            "uploads_playlist_id": "UU" + channel_query[2:],
-            "name": channel_query
-        }
+    channel_id = None
+    handle = None
 
-    # Search for the channel
-    resp = yt.search().list(
-        q=channel_query,
-        type="channel",
-        part="snippet",
-        maxResults=1
-    ).execute()
+    # 1. Parse URL patterns
+    if "youtube.com" in clean or "youtu.be" in clean:
+        ch_match = re.search(r'channel/(UC[a-zA-Z0-9_-]{22})', clean)
+        if ch_match:
+            channel_id = ch_match.group(1)
+        else:
+            handle_match = re.search(r'@([a-zA-Z0-9_.-]+)', clean)
+            if handle_match:
+                handle = handle_match.group(1)
+            else:
+                path_match = re.search(r'youtube\.com/(?:c/|user/)?([a-zA-Z0-9_.-]+)', clean)
+                if path_match:
+                    clean = path_match.group(1)
+    elif clean.startswith("@"):
+        handle = clean[1:]
+    elif clean.startswith("UC") and len(clean) == 24:
+        channel_id = clean
 
-    items = resp.get("items", [])
-    if not items:
-        return None
+    # 2. Try looking up directly by channel_id (costs 1 unit)
+    if channel_id:
+        try:
+            resp = yt.channels().list(id=channel_id, part="contentDetails,snippet").execute()
+            items = resp.get("items", [])
+            if items:
+                item = items[0]
+                return {
+                    "channel_id": channel_id,
+                    "uploads_playlist_id": item["contentDetails"]["relatedPlaylists"]["uploads"],
+                    "name": item["snippet"]["title"]
+                }
+        except Exception:
+            pass
 
-    channel_id = items[0]["id"]["channelId"]
-    channel_title = items[0]["snippet"]["title"]
+    # 3. Try looking up directly by handle (costs 1 unit)
+    if handle:
+        try:
+            resp = yt.channels().list(forHandle=handle, part="contentDetails,snippet").execute()
+            items = resp.get("items", [])
+            if items:
+                item = items[0]
+                return {
+                    "channel_id": item["id"],
+                    "uploads_playlist_id": item["contentDetails"]["relatedPlaylists"]["uploads"],
+                    "name": item["snippet"]["title"]
+                }
+        except Exception:
+            pass
+        # Fall back to searching by handle text
+        clean = handle
 
-    # Get uploads playlist ID from channels endpoint
-    ch_resp = yt.channels().list(
-        id=channel_id,
-        part="contentDetails,snippet"
-    ).execute()
+    # 4. Fallback: Search for the channel by query / name
+    try:
+        resp = yt.search().list(
+            q=clean,
+            type="channel",
+            part="snippet",
+            maxResults=1
+        ).execute()
 
-    ch_items = ch_resp.get("items", [])
-    if not ch_items:
-        return None
+        items = resp.get("items", [])
+        if items:
+            ch_id = items[0]["id"]["channelId"]
+            title = items[0]["snippet"]["title"]
 
-    uploads_id = ch_items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
-    return {
-        "channel_id": channel_id,
-        "uploads_playlist_id": uploads_id,
-        "name": channel_title
-    }
+            ch_resp = yt.channels().list(
+                id=ch_id,
+                part="contentDetails"
+            ).execute()
+
+            ch_items = ch_resp.get("items", [])
+            if ch_items:
+                return {
+                    "channel_id": ch_id,
+                    "uploads_playlist_id": ch_items[0]["contentDetails"]["relatedPlaylists"]["uploads"],
+                    "name": title
+                }
+    except Exception as e:
+        print(f"Error resolving channel query: {e}")
+
+    return None
 
 def fetch_channel_videos(uploads_playlist_id: str, max_results: int = 40) -> List[Dict[str, Any]]:
     """

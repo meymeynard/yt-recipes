@@ -38,63 +38,118 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ----------------- BASE CATEGORIES & CUSTOM INGREDIENTS ----------------- #
+BASE_CATEGORIES = {
+    "🥩 Proteins": ["chicken breast", "chicken", "ground pork", "pork", "egg", "salted egg", "ground beef", "beef", "shrimp", "tofu"],
+    "🥦 Vegetables": ["ampalaya", "okra", "sayote", "carrots", "green peas", "chickpeas", "corn", "red bell pepper", "mushroom", "tomato", "potato", "cabbage", "eggplant", "sitaw", "kangkong", "bok choy"],
+    "🧄 Aromatics & Citrus": ["garlic", "white onion", "red onion", "ginger", "calamansi", "lemon", "scallions"],
+    "🧂 Sauces & Seasonings": ["soy sauce", "oyster sauce", "fish sauce", "vinegar", "sesame oil", "cooking oil", "salt", "black pepper", "sugar", "cornstarch", "tomato sauce"],
+    "✨ Other / Custom": []
+}
+
+# Merge custom ingredients from SQLite
+custom_data = db.get_custom_ingredients()
+CATEGORIES = {cat: list(items) for cat, items in BASE_CATEGORIES.items()}
+for cat, items in custom_data.items():
+    if cat not in CATEGORIES:
+        CATEGORIES[cat] = []
+    for it in items:
+        if it not in CATEGORIES[cat]:
+            CATEGORIES[cat].append(it)
+        parser.register_custom_ingredient(it)
+
+# Collect all items across all categories
+all_known_ingredients = set()
+for items in CATEGORIES.values():
+    all_known_ingredients.update(items)
+
+# Preset Basket
+USER_INITIAL_BASKET = [
+    "ampalaya", "carrots", "okra", "calamansi", "green peas",
+    "chickpeas", "corn", "sayote", "chicken breast", "egg",
+    "salted egg", "ground pork", "red bell pepper", "lemon",
+    "mushroom", "red onion", "white onion", "garlic", "ginger",
+    "oyster sauce", "soy sauce"
+]
+
+# Initialize state on first run
+if "initialized" not in st.session_state:
+    st.session_state["initialized"] = True
+    for item in all_known_ingredients:
+        st.session_state[f"ing_{item}"] = (item in USER_INITIAL_BASKET)
+
+# Callbacks for Load Basket and Clear All
+def on_load_basket():
+    basket_set = set(USER_INITIAL_BASKET)
+    for item in all_known_ingredients:
+        st.session_state[f"ing_{item}"] = (item in basket_set)
+
+def on_clear_all():
+    for item in all_known_ingredients:
+        st.session_state[f"ing_{item}"] = False
+
 # ----------------- SIDEBAR: INVENTORY & SYNC ----------------- #
 with st.sidebar:
     st.title("🍳 Pantry Inventory")
     
-    # Presets
-    user_initial_basket = [
-        "ampalaya", "carrots", "okra", "calamansi", "green peas",
-        "chickpeas", "corn", "sayote", "chicken breast", "egg",
-        "salted egg", "ground pork", "red bell pepper", "lemon",
-        "mushroom", "red onion", "white onion", "garlic", "ginger",
-        "oyster sauce", "soy sauce"
-    ]
-
+    # Presets Buttons with explicit callbacks to toggle widget state
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("📋 Load My Basket", use_container_width=True):
-            st.session_state["pantry"] = list(user_initial_basket)
-            st.rerun()
+        st.button("📋 Load My Basket", on_click=on_load_basket, use_container_width=True, help="Instantly checks your initial pantry basket.")
     with col_btn2:
-        if st.button("🗑️ Clear All", use_container_width=True):
-            st.session_state["pantry"] = []
-            st.rerun()
+        st.button("🗑️ Clear All", on_click=on_clear_all, use_container_width=True, help="Unchecks all ingredients in all categories.")
 
-    if "pantry" not in st.session_state:
-        st.session_state["pantry"] = list(user_initial_basket)
+    # ➕ User Story 1: Add custom ingredients to any category
+    with st.expander("➕ Add Ingredient to Category", expanded=False):
+        target_cat = st.selectbox("Category", list(CATEGORIES.keys()))
+        new_ing = st.text_input("Ingredient Name", placeholder="e.g. Coconut milk, Pork belly")
+        if st.button("Add Ingredient", use_container_width=True):
+            clean_name = new_ing.lower().strip()
+            if clean_name:
+                db.add_custom_ingredient(target_cat, clean_name)
+                parser.register_custom_ingredient(clean_name)
+                st.session_state[f"ing_{clean_name}"] = True
+                st.success(f"Added '{clean_name.title()}' to {target_cat}!")
+                st.rerun()
+            else:
+                st.warning("Please type an ingredient name first.")
 
-    # Organized ingredient categories
-    CATEGORIES = {
-        "🥩 Proteins": ["chicken breast", "chicken", "ground pork", "pork", "egg", "salted egg", "ground beef", "beef", "shrimp", "tofu"],
-        "🥦 Vegetables": ["ampalaya", "okra", "sayote", "carrots", "green peas", "chickpeas", "corn", "red bell pepper", "mushroom", "tomato", "potato", "cabbage", "eggplant", "sitaw", "kangkong", "bok choy"],
-        "🧄 Aromatics & Citrus": ["garlic", "white onion", "red onion", "ginger", "calamansi", "lemon", "scallions"],
-        "🧂 Sauces & Seasonings": ["soy sauce", "oyster sauce", "fish sauce", "vinegar", "sesame oil", "cooking oil", "salt", "black pepper", "sugar", "cornstarch", "tomato sauce"]
-    }
-
-    selected_pantry = set(st.session_state["pantry"])
-
+    # Render category checklists
     for cat_name, items in CATEGORIES.items():
+        if not items:
+            continue
         with st.expander(cat_name, expanded=(cat_name in ["🥩 Proteins", "🥦 Vegetables"])):
             for item in items:
-                checked = item in selected_pantry
-                new_state = st.checkbox(item.title(), value=checked, key=f"ing_{item}")
-                if new_state and item not in selected_pantry:
-                    selected_pantry.add(item)
-                elif not new_state and item in selected_pantry:
-                    selected_pantry.remove(item)
+                # Ensure key exists in session_state
+                if f"ing_{item}" not in st.session_state:
+                    st.session_state[f"ing_{item}"] = False
+                st.checkbox(item.title(), key=f"ing_{item}")
 
-    st.session_state["pantry"] = list(selected_pantry)
+    # Derive active pantry directly from checkbox widget states
+    active_pantry = [
+        k[4:] for k, v in st.session_state.items()
+        if k.startswith("ing_") and v is True
+    ]
+    st.session_state["pantry"] = active_pantry
 
     st.divider()
+    
+    # 🔗 User Story 2: Channel Sync with YouTube URL, @handle, or Name
     st.subheader("⚙️ Channel Sync")
-    channel_to_sync = st.text_input("Channel Name / Handle", value="Panlasang Pinoy")
+    channel_to_sync = st.text_input(
+        "YouTube Channel Link, @Handle, or Name",
+        value="https://www.youtube.com/@PanlasangPinoy",
+        help="Paste a full YouTube URL (e.g. https://www.youtube.com/@PanlasangPinoy or https://youtube.com/channel/UC...), an @handle, or a creator name."
+    )
     fetch_limit = st.slider("Videos to fetch", min_value=10, max_value=60, value=30, step=10)
     
     if st.button("📥 Sync Channel to Database", use_container_width=True):
-        with st.spinner(f"Fetching upload playlist for '{channel_to_sync}'..."):
+        with st.spinner(f"Resolving channel & fetching videos..."):
             count = ingest.ingest_channel(channel_to_sync, max_videos=fetch_limit)
-            st.success(f"Synced {count} videos into SQLite!")
+            if count > 0:
+                st.success(f"Synced {count} videos into database!")
+            else:
+                st.error(f"Could not find channel for: '{channel_to_sync}'. Please verify the URL or name.")
             st.rerun()
 
     stats = db.get_stats()
@@ -110,7 +165,7 @@ if st.session_state["pantry"]:
     chips_html = "".join([f'<span class="metric-badge badge-green" style="margin: 2px;">✓ {item}</span>' for item in sorted(st.session_state["pantry"])])
     st.markdown(f"<div>{chips_html}</div>", unsafe_allow_html=True)
 else:
-    st.info("Your pantry is empty! Select ingredients in the sidebar or click 'Load My Basket'.")
+    st.info("Your pantry is empty! Select ingredients in the sidebar or click '📋 Load My Basket'.")
 
 st.write("")
 
@@ -118,7 +173,6 @@ st.write("")
 tab_matched, tab_search = st.tabs(["✨ Matched Recipes", "🔍 Live YouTube Search"])
 
 with tab_matched:
-    # Controls
     col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
     with col_f1:
         min_match = st.slider("Min Match %", min_value=10, max_value=100, value=30, step=10)
@@ -148,7 +202,6 @@ with tab_matched:
                 with col_img:
                     st.image(r["thumbnail_url"], use_container_width=True)
                 with col_info:
-                    # Match score badge
                     badge_class = "badge-green" if r["match_percentage"] >= 80 else ("badge-yellow" if r["match_percentage"] >= 50 else "badge-gray")
                     cookable_tag = " <span class='metric-badge badge-green'>🎉 Ready to Cook!</span>" if r["is_cookable"] else ""
                     
@@ -161,7 +214,6 @@ with tab_matched:
                     
                     st.write("")
                     
-                    # Ingredients have vs missing
                     matched_html = " ".join([f"<span class='metric-badge badge-green'>✓ {i}</span>" for i in r["matched"]])
                     missing_html = " ".join([f"<span class='metric-badge badge-missing'>✗ {i}</span>" for i in r["missing"]])
                     

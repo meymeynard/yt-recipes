@@ -37,6 +37,13 @@ def init_db():
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_recipe_ing_video ON recipe_ingredients(video_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_recipe_ing_name ON recipe_ingredients(ingredient_name);")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS custom_ingredients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category_name TEXT NOT NULL,
+                ingredient_name TEXT NOT NULL UNIQUE
+            );
+        """)
     conn.close()
 
 def save_recipe(
@@ -106,3 +113,37 @@ def get_stats() -> Dict[str, int]:
     ingredients_count = cursor.fetchone()["count"]
     conn.close()
     return {"recipes": recipes_count, "ingredients": ingredients_count}
+
+def add_custom_ingredient(category_name: str, ingredient_name: str) -> bool:
+    name = ingredient_name.lower().strip()
+    if not name:
+        return False
+    conn = get_connection()
+    with conn:
+        conn.execute("""
+            INSERT INTO custom_ingredients (category_name, ingredient_name)
+            VALUES (?, ?)
+            ON CONFLICT(ingredient_name) DO UPDATE SET category_name=excluded.category_name
+        """, (category_name.strip(), name))
+    conn.close()
+    return True
+
+def get_custom_ingredients() -> Dict[str, List[str]]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT category_name, ingredient_name FROM custom_ingredients ORDER BY ingredient_name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    result = {}
+    for r in rows:
+        cat = r["category_name"]
+        if cat not in result:
+            result[cat] = []
+        result[cat].append(r["ingredient_name"])
+    return result
+
+def delete_custom_ingredient(ingredient_name: str):
+    conn = get_connection()
+    with conn:
+        conn.execute("DELETE FROM custom_ingredients WHERE ingredient_name = ?", (ingredient_name.lower().strip(),))
+    conn.close()
