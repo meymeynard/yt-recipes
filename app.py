@@ -225,23 +225,43 @@ with tab_search:
     st.subheader("Query YouTube Data API On-Demand")
     st.caption("Search for any specific recipe or ingredient combo and import it directly into your database.")
     
+    if "live_results" not in st.session_state:
+        st.session_state["live_results"] = []
+
     search_q = st.text_input("Search query", value="Chicken Sayote")
     if st.button("Search YouTube"):
         with st.spinner("Searching YouTube API and parsing descriptions..."):
-            live_results = youtube_client.search_youtube_recipes(search_q, max_results=8)
-            st.success(f"Found {len(live_results)} videos from YouTube!")
-            
-            for item in live_results:
+            fetched_videos = youtube_client.search_youtube_recipes(search_q, max_results=8)
+            processed_results = []
+            for item in fetched_videos:
                 raw_text, parsed_ings = parser.parse_recipe_description(item["title"], item["description"])
-                col_s1, col_s2 = st.columns([1, 2])
-                with col_s1:
-                    st.image(item["thumbnail_url"], use_container_width=True)
-                with col_s2:
-                    st.markdown(f"#### [{item['title']}](https://www.youtube.com/watch?v={item['video_id']})")
-                    st.caption(f"Channel: {item['channel_name']}")
-                    ing_names = [i["name"] for i in parsed_ings]
-                    st.write(f"**Parsed Ingredients ({len(ing_names)}):** {', '.join(ing_names) if ing_names else 'None detected'}")
-                    
+                processed_results.append({
+                    **item,
+                    "raw_text": raw_text,
+                    "parsed_ings": parsed_ings
+                })
+            st.session_state["live_results"] = processed_results
+            st.session_state["last_search_query"] = search_q
+
+    if st.session_state["live_results"]:
+        saved_video_ids = db.get_saved_video_ids()
+        st.info(f"Showing results for: **{st.session_state.get('last_search_query', search_q)}** ({len(st.session_state['live_results'])} videos found)")
+        
+        for item in st.session_state["live_results"]:
+            is_saved = item["video_id"] in saved_video_ids
+            col_s1, col_s2 = st.columns([1, 2])
+            with col_s1:
+                st.image(item["thumbnail_url"], use_container_width=True)
+            with col_s2:
+                saved_badge = " <span class='metric-badge badge-green'>✓ In Library</span>" if is_saved else ""
+                st.markdown(f"#### [{item['title']}](https://www.youtube.com/watch?v={item['video_id']}){saved_badge}", unsafe_allow_html=True)
+                st.caption(f"Channel: {item['channel_name']}")
+                ing_names = [i["name"] for i in item["parsed_ings"]]
+                st.write(f"**Parsed Ingredients ({len(ing_names)}):** {', '.join(ing_names) if ing_names else 'None detected'}")
+                
+                if is_saved:
+                    st.button("✅ Already in Database", key=f"saved_{item['video_id']}", disabled=True)
+                else:
                     if st.button("💾 Save to Database", key=f"save_{item['video_id']}"):
                         db.save_recipe(
                             video_id=item["video_id"],
@@ -251,9 +271,9 @@ with tab_search:
                             published_at=item["published_at"],
                             thumbnail_url=item["thumbnail_url"],
                             description=item["description"],
-                            raw_ingredients_text=raw_text,
-                            ingredients=parsed_ings
+                            raw_ingredients_text=item["raw_text"],
+                            ingredients=item["parsed_ings"]
                         )
-                        st.success("Saved to database!")
+                        st.toast(f"Saved '{item['title']}' to database!", icon="✅")
                         st.rerun()
-                st.divider()
+            st.divider()

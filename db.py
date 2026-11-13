@@ -109,6 +109,14 @@ def get_unique_ingredients() -> List[str]:
     conn.close()
     return [r["ingredient_name"] for r in rows]
 
+def get_saved_video_ids() -> Set[str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT video_id FROM recipes")
+    rows = cursor.fetchall()
+    conn.close()
+    return {r["video_id"] for r in rows}
+
 def get_stats() -> Dict[str, int]:
     conn = get_connection()
     cursor = conn.cursor()
