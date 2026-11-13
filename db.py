@@ -84,6 +84,13 @@ def save_recipe(
             """, (video_id, ing["name"], ing.get("raw_line", "")))
     conn.close()
 
+def delete_recipe(video_id: str):
+    conn = get_connection()
+    with conn:
+        conn.execute("DELETE FROM recipe_ingredients WHERE video_id = ?", (video_id,))
+        conn.execute("DELETE FROM recipes WHERE video_id = ?", (video_id,))
+    conn.close()
+
 def get_all_recipes_with_ingredients() -> List[Dict[str, Any]]:
     conn = get_connection()
     cursor = conn.cursor()

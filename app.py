@@ -162,8 +162,8 @@ else:
 
 st.write("")
 
-# Tabs: Indexed Recipes vs Live Search
-tab_matched, tab_search = st.tabs(["✨ Matched Recipes", "🔍 Live YouTube Search"])
+# Tabs: Indexed Recipes vs Library vs Live Search
+tab_matched, tab_library, tab_search = st.tabs(["✨ Matched Recipes", "📚 Recipe Library", "🔍 Live YouTube Search"])
 
 with tab_matched:
     col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
@@ -218,6 +218,67 @@ with tab_matched:
                     with st.expander("📖 View Recipe Ingredients & Instructions"):
                         st.text(r["raw_ingredients_text"] if r["raw_ingredients_text"] else r["description"][:1000])
                         st.link_button("▶️ Watch Video on YouTube", f"https://www.youtube.com/watch?v={r['video_id']}")
+
+                st.divider()
+
+with tab_library:
+    library_recipes = db.get_all_recipes_with_ingredients()
+    
+    st.subheader(f"📚 Recipe Library ({len(library_recipes)} Total)")
+    st.caption("Browse and search all cooking videos currently indexed in your database.")
+    
+    if not library_recipes:
+        st.info("No recipes in your library yet! Use the sidebar 'Channel Sync' or 'Live YouTube Search' tab to add some.")
+    else:
+        # Search & Channel filters
+        col_l1, col_l2 = st.columns([2, 1])
+        with col_l1:
+            lib_query = st.text_input("Search Library by title or ingredient", placeholder="e.g. adobo, ampalaya, chicken", key="lib_search_input")
+        with col_l2:
+            available_channels = ["All Channels"] + sorted(list({r["channel_name"] for r in library_recipes if r.get("channel_name")}))
+            selected_ch = st.selectbox("Filter by Channel", available_channels, key="lib_channel_select")
+
+        # Apply filtering
+        display_recipes = library_recipes
+        if selected_ch != "All Channels":
+            display_recipes = [r for r in display_recipes if r.get("channel_name") == selected_ch]
+        
+        if lib_query:
+            q = lib_query.lower().strip()
+            display_recipes = [
+                r for r in display_recipes
+                if q in r["title"].lower() or any(q in ing.lower() for ing in r.get("ingredients", []))
+            ]
+
+        st.caption(f"Showing **{len(display_recipes)}** of {len(library_recipes)} recipes")
+
+        for r in display_recipes:
+            with st.container():
+                col_img, col_info = st.columns([1, 2])
+                with col_img:
+                    st.image(r["thumbnail_url"], use_container_width=True)
+                with col_info:
+                    st.markdown(f"### [{r['title']}](https://www.youtube.com/watch?v={r['video_id']})")
+                    st.markdown(f"<span class='metric-badge badge-gray'>{r['channel_name']}</span>", unsafe_allow_html=True)
+                    st.write("")
+                    
+                    if r.get("ingredients"):
+                        ings_html = " ".join([f"<span class='metric-badge badge-green'>{i}</span>" for i in r["ingredients"]])
+                        st.markdown(f"**Ingredients ({len(r['ingredients'])}):** {ings_html}", unsafe_allow_html=True)
+                    else:
+                        st.caption("No specific ingredients parsed (short/vlog or non-standard format).")
+
+                    with st.expander("📖 View Recipe Description"):
+                        st.text(r["raw_ingredients_text"] if r["raw_ingredients_text"] else r["description"][:1000])
+                    
+                    col_act1, col_act2 = st.columns([3, 1])
+                    with col_act1:
+                        st.link_button("▶️ Watch Video on YouTube", f"https://www.youtube.com/watch?v={r['video_id']}")
+                    with col_act2:
+                        if st.button("🗑️ Remove", key=f"del_{r['video_id']}", help="Delete this recipe from your local database"):
+                            db.delete_recipe(r["video_id"])
+                            st.toast(f"Removed '{r['title']}' from library.", icon="🗑️")
+                            st.rerun()
 
                 st.divider()
 
