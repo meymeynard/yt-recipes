@@ -1,9 +1,57 @@
+import math
 import streamlit as st
 import db
 import parser
 import matcher
 import youtube_client
 import ingest
+
+ITEMS_PER_PAGE = 10
+
+def paginate_items(items: list, state_key: str, items_per_page: int = ITEMS_PER_PAGE):
+    """
+    Slices items for the current page and provides top/bottom navigation controls.
+    """
+    total_items = len(items)
+    if total_items == 0:
+        return [], lambda: None
+
+    total_pages = max(1, math.ceil(total_items / items_per_page))
+    
+    # Ensure current page in session state is valid
+    if state_key not in st.session_state:
+        st.session_state[state_key] = 1
+    elif st.session_state[state_key] > total_pages:
+        st.session_state[state_key] = total_pages
+    elif st.session_state[state_key] < 1:
+        st.session_state[state_key] = 1
+
+    current_page = st.session_state[state_key]
+    start_idx = (current_page - 1) * items_per_page
+    end_idx = min(start_idx + items_per_page, total_items)
+    page_slice = items[start_idx:end_idx]
+
+    def render_controls():
+        if total_pages <= 1:
+            return
+        col_prev, col_info, col_next = st.columns([1, 2, 1])
+        with col_prev:
+            if st.button("⬅️ Previous", key=f"prev_{state_key}", disabled=(current_page <= 1), use_container_width=True):
+                st.session_state[state_key] = max(1, current_page - 1)
+                st.rerun()
+        with col_info:
+            st.markdown(
+                f"<div style='text-align: center; padding-top: 8px; font-weight: 600; color: #4b5563;'>"
+                f"Page {current_page} of {total_pages} (Showing {start_idx + 1}–{end_idx} of {total_items})"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+        with col_next:
+            if st.button("Next ➡️", key=f"next_{state_key}", disabled=(current_page >= total_pages), use_container_width=True):
+                st.session_state[state_key] = min(total_pages, current_page + 1)
+                st.rerun()
+
+    return page_slice, render_controls
 
 st.set_page_config(
     page_title="Pantry Chef | YouTube Recipe Aggregator",
@@ -189,7 +237,9 @@ with tab_matched:
 
         st.subheader(f"Found {len(results)} Matching Recipes")
 
-        for r in results:
+        page_results, render_matched_pagination = paginate_items(results, "page_matched", ITEMS_PER_PAGE)
+
+        for r in page_results:
             with st.container():
                 col_img, col_info = st.columns([1, 2])
                 with col_img:
@@ -221,6 +271,8 @@ with tab_matched:
 
                 st.divider()
 
+        render_matched_pagination()
+
 with tab_library:
     library_recipes = db.get_all_recipes_with_ingredients()
     
@@ -250,9 +302,11 @@ with tab_library:
                 if q in r["title"].lower() or any(q in ing.lower() for ing in r.get("ingredients", []))
             ]
 
-        st.caption(f"Showing **{len(display_recipes)}** of {len(library_recipes)} recipes")
+        st.caption(f"Showing **{len(display_recipes)}** of {len(library_recipes)} recipes (10 per page)")
 
-        for r in display_recipes:
+        page_library, render_library_pagination = paginate_items(display_recipes, "page_library", ITEMS_PER_PAGE)
+
+        for r in page_library:
             with st.container():
                 col_img, col_info = st.columns([1, 2])
                 with col_img:
@@ -282,6 +336,8 @@ with tab_library:
 
                 st.divider()
 
+        render_library_pagination()
+
 with tab_search:
     st.subheader("Query YouTube Data API On-Demand")
     st.caption("Search for any specific recipe or ingredient combo and import it directly into your database.")
@@ -292,7 +348,7 @@ with tab_search:
     search_q = st.text_input("Search query", value="Chicken Sayote")
     if st.button("Search YouTube"):
         with st.spinner("Searching YouTube API and parsing descriptions..."):
-            fetched_videos = youtube_client.search_youtube_recipes(search_q, max_results=8)
+            fetched_videos = youtube_client.search_youtube_recipes(search_q, max_results=20)
             processed_results = []
             for item in fetched_videos:
                 raw_text, parsed_ings = parser.parse_recipe_description(item["title"], item["description"])
@@ -303,12 +359,15 @@ with tab_search:
                 })
             st.session_state["live_results"] = processed_results
             st.session_state["last_search_query"] = search_q
+            st.session_state["page_search"] = 1
 
     if st.session_state["live_results"]:
         saved_video_ids = db.get_saved_video_ids()
-        st.info(f"Showing results for: **{st.session_state.get('last_search_query', search_q)}** ({len(st.session_state['live_results'])} videos found)")
+        st.info(f"Showing results for: **{st.session_state.get('last_search_query', search_q)}** ({len(st.session_state['live_results'])} videos found, 10 per page)")
         
-        for item in st.session_state["live_results"]:
+        page_search, render_search_pagination = paginate_items(st.session_state["live_results"], "page_search", ITEMS_PER_PAGE)
+
+        for item in page_search:
             is_saved = item["video_id"] in saved_video_ids
             col_s1, col_s2 = st.columns([1, 2])
             with col_s1:
@@ -338,3 +397,5 @@ with tab_search:
                         st.toast(f"Saved '{item['title']}' to database!", icon="✅")
                         st.rerun()
             st.divider()
+
+        render_search_pagination()
