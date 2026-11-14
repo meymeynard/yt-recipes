@@ -43,150 +43,760 @@ LIVE_SEARCH_CACHE: Dict[str, Any] = {
 
 CUSTOM_CSS = Style("""
 :root {
-    --pico-font-size: 15px;
-    --pico-spacing: 0.75rem;
+    --bg-canvas: #faf8f5;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f3efe8;
+    --bg-hover: #efe9df;
+    --border: #e6dfd5;
+    --border-strong: #d4cabd;
+    --text-primary: #1c1917;
+    --text-secondary: #57534e;
+    --text-muted: #78716c;
+    --accent: #d94e28;
+    --accent-hover: #b83d1b;
+    --accent-soft: #fff1ec;
+    --green-bg: #dcfce7;
+    --green-text: #166534;
+    --green-border: #86efac;
+    --amber-bg: #fef3c7;
+    --amber-text: #92400e;
+    --amber-border: #fcd34d;
+    --red-bg: #fee2e2;
+    --red-text: #991b1b;
+    --red-border: #fca5a5;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
+    --shadow-md: 0 4px 14px rgba(28, 25, 23, 0.07);
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Fraunces', Georgia, serif;
 }
-body {
-    margin: 0;
-    background: #f8fafc;
-    color: #1e293b;
-}
-.app-layout {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    min-height: 100vh;
-}
-@media (max-width: 900px) {
-    .app-layout { grid-template-columns: 1fr; }
-}
-.sidebar {
-    background: #ffffff;
-    border-right: 1px solid #e2e8f0;
-    padding: 1.25rem;
-}
-.main-content {
-    padding: 1.5rem 2rem;
-    max-width: 1100px;
-    width: 100%;
+
+*, *::before, *::after {
     box-sizing: border-box;
 }
-.badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    margin: 2px 4px 2px 0;
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
 }
-.badge-green { background: #d1fae5; color: #065f46; border: 1px solid #34d399; }
-.badge-yellow { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
-.badge-gray { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
-.badge-missing { background: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
-.recipe-card {
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+button, input, select {
+    font-family: inherit;
+    font-size: 0.92rem;
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* App Shell */
+.app-layout {
     display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 1.25rem;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    grid-template-columns: 330px minmax(0, 1fr);
+    min-height: 100vh;
 }
-@media (max-width: 700px) {
-    .recipe-card { grid-template-columns: 1fr; }
+
+/* Mobile Header */
+.mobile-header {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.15rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 30;
 }
-.recipe-thumb {
+.mobile-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.sidebar-backdrop {
+    display: none;
+}
+
+/* Sidebar */
+.sidebar {
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    padding: 1.35rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.sidebar-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+.sidebar-close-btn {
+    display: none;
+}
+
+@media (max-width: 960px) {
+    .app-layout {
+        grid-template-columns: 1fr;
+    }
+    .mobile-header {
+        display: flex;
+    }
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(340px, 88vw);
+        z-index: 50;
+        transform: translateX(-105%);
+        transition: transform 0.22s ease;
+        box-shadow: var(--shadow-md);
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    .sidebar-backdrop.open {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(28, 25, 23, 0.45);
+        z-index: 40;
+    }
+    .sidebar-close-btn {
+        display: inline-flex;
+    }
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.55rem 1rem;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.88rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    text-decoration: none !important;
+    line-height: 1.25;
+}
+.btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.btn-primary {
+    background: var(--accent);
+    color: #ffffff;
+}
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+}
+.btn-secondary {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+}
+.btn-secondary:hover:not(:disabled) {
+    background: var(--bg-subtle);
+}
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border);
+}
+.btn-ghost:hover:not(:disabled) {
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+}
+.btn-danger-ghost {
+    background: transparent;
+    color: var(--red-text);
+    border-color: var(--red-border);
+}
+.btn-danger-ghost:hover:not(:disabled) {
+    background: var(--red-bg);
+}
+.btn-sm {
+    padding: 0.4rem 0.78rem;
+    font-size: 0.82rem;
+}
+.btn-full {
     width: 100%;
-    border-radius: 8px;
-    object-fit: cover;
-    aspect-ratio: 16/9;
 }
-.tabs {
+
+/* Inputs & Form Controls */
+.input, .select {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input:focus, .select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(217, 78, 40, 0.14);
+}
+.field-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* Sidebar Sections */
+.sidebar-actions {
     display: flex;
     gap: 0.5rem;
-    border-bottom: 2px solid #e2e8f0;
+}
+.pantry-filter-input {
+    padding: 0.48rem 0.75rem;
+    font-size: 0.86rem;
+    background: var(--bg-canvas);
+}
+.accordion {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    margin-bottom: 0.55rem;
+    overflow: hidden;
+}
+.accordion summary {
+    list-style: none;
+    padding: 0.6rem 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-canvas);
+    user-select: none;
+}
+.accordion summary::-webkit-details-marker {
+    display: none;
+}
+.accordion summary:hover {
+    background: var(--bg-subtle);
+}
+.accordion-body {
+    padding: 0.65rem 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.cat-count {
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+}
+.cat-count.has-selected {
+    background: var(--green-bg);
+    color: var(--green-text);
+}
+.cat-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.ing-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    user-select: none;
+}
+.ing-pill:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+.ing-pill input[type="checkbox"] {
+    accent-color: var(--green-text);
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    cursor: pointer;
+}
+.ing-pill:has(input:checked) {
+    background: var(--green-bg);
+    border-color: var(--green-border);
+    color: var(--green-text);
+    font-weight: 600;
+}
+
+.sidebar-card {
+    background: var(--bg-canvas);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+.sidebar-card h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+.stat-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.65rem;
+    text-align: center;
+}
+.stat-num {
+    display: block;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.stat-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Main Content */
+.main-content {
+    padding: 1.75rem 2.25rem 3rem;
+    max-width: 1140px;
+    width: 100%;
+    margin: 0 auto;
+}
+@media (max-width: 640px) {
+    .main-content {
+        padding: 1.15rem 1rem 2.5rem;
+    }
+}
+
+.hero-header {
+    margin-bottom: 1.25rem;
+}
+.hero-title {
+    margin: 0 0 0.35rem 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.65rem, 2.5vw, 2.2rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+}
+.hero-subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+/* Pantry Chips Card */
+.pantry-summary {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.95rem 1.15rem;
+    margin-bottom: 1.35rem;
+    box-shadow: var(--shadow-sm);
+}
+.pantry-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.55rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+/* Badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    line-height: 1.35;
+}
+.badge-green { background: var(--green-bg); color: var(--green-text); border-color: var(--green-border); }
+.badge-yellow { background: var(--amber-bg); color: var(--amber-text); border-color: var(--amber-border); }
+.badge-gray { background: var(--bg-subtle); color: var(--text-secondary); border-color: var(--border); }
+.badge-missing { background: var(--red-bg); color: var(--red-text); border-color: var(--red-border); }
+
+/* Tabs */
+.tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    background: var(--bg-subtle);
+    padding: 0.35rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
     margin-bottom: 1.25rem;
 }
 .tab-btn {
-    background: transparent !important;
-    border: none !important;
-    border-bottom: 3px solid transparent !important;
-    border-radius: 0 !important;
-    padding: 0.6rem 1rem !important;
-    font-weight: 600 !important;
-    color: #64748b !important;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.52rem 1rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
     cursor: pointer;
-    margin: 0 0 -2px 0 !important;
-    width: auto !important;
-    box-shadow: none !important;
+    transition: all 0.15s ease;
+}
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.55);
 }
 .tab-btn.active {
-    color: #0f172a !important;
-    border-bottom-color: #ef4444 !important;
+    background: var(--bg-surface);
+    color: var(--accent);
+    box-shadow: var(--shadow-sm);
 }
+
+/* Filter Bar */
+.filter-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.15rem;
+    align-items: end;
+    box-shadow: var(--shadow-sm);
+}
+.range-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+.range-val {
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+}
+input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.staples-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    padding: 0.45rem 0.65rem;
+    background: var(--bg-canvas);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.staples-check input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.results-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.9rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.results-meta h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+/* Recipe Cards */
+.recipe-card {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1fr);
+    gap: 1.35rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.recipe-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
+}
+@media (max-width: 720px) {
+    .recipe-card {
+        grid-template-columns: 1fr;
+        gap: 0.9rem;
+    }
+}
+.thumb-wrap {
+    position: relative;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-subtle);
+    aspect-ratio: 16 / 9;
+    align-self: start;
+}
+.recipe-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.25s ease;
+}
+.recipe-card:hover .recipe-thumb {
+    transform: scale(1.03);
+}
+.thumb-overlay-badge {
+    position: absolute;
+    top: 0.55rem;
+    left: 0.55rem;
+    padding: 0.24rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+.card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 0;
+}
+.card-title {
+    margin: 0;
+    font-size: 1.08rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+.card-title a {
+    color: var(--text-primary);
+}
+.card-title a:hover {
+    color: var(--accent);
+    text-decoration: none;
+}
+.card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+.ing-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.84rem;
+}
+.ing-row-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-right: 0.2rem;
+}
+.recipe-details {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-canvas);
+    margin-top: 0.2rem;
+}
+.recipe-details summary {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+.recipe-details summary:hover {
+    color: var(--text-primary);
+}
+.recipe-pre {
+    margin: 0;
+    padding: 0.75rem;
+    border-top: 1px solid var(--border);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--font-sans);
+    font-size: 0.84rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--bg-surface);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+.card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.25rem;
+}
+
+/* Empty States */
+.empty-state {
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 2.25rem 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+.empty-state-icon {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+}
+.empty-state h4 {
+    margin: 0 0 0.35rem 0;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+}
+.empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Pagination */
 .pagination {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    margin-top: 1.25rem;
+    margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border);
 }
-.pagination button {
-    width: auto !important;
-    margin: 0 !important;
-    padding: 0.45rem 1rem !important;
+.pagination-info {
+    font-size: 0.86rem;
+    color: var(--text-secondary);
 }
-.cat-list label {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    margin-bottom: 0.35rem;
-    font-size: 0.92rem;
-    cursor: pointer;
-}
-.cat-list input[type="checkbox"] {
-    margin: 0;
-}
-.btn-inline {
-    width: auto !important;
-    display: inline-block !important;
-    padding: 0.4rem 0.85rem !important;
-    font-size: 0.85rem !important;
-    margin: 0.25rem 0.5rem 0.25rem 0 !important;
-}
-.filter-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 0.9rem 1rem;
-    margin-bottom: 1rem;
-    align-items: end;
-}
-.filter-bar label {
-    margin-bottom: 0;
-    font-size: 0.85rem;
-}
-.filter-bar input, .filter-bar select {
-    margin-bottom: 0 !important;
-}
+
+/* Loading indicator */
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator,
 .htmx-request.htmx-indicator { display: inline-block; }
 """)
 
+CLIENT_JS = Script("""
+function toggleSidebar(forceOpen) {
+    const sb = document.getElementById('sidebar-panel');
+    const bd = document.getElementById('sidebar-backdrop');
+    if (!sb || !bd) return;
+    const isOpen = typeof forceOpen === 'boolean' ? forceOpen : !sb.classList.contains('open');
+    sb.classList.toggle('open', isOpen);
+    bd.classList.toggle('open', isOpen);
+}
+function filterPantryIngredients(query) {
+    const q = (query || '').toLowerCase().trim();
+    const accordions = document.querySelectorAll('#sidebar-categories details.accordion');
+    accordions.forEach(acc => {
+        let visibleCount = 0;
+        const pills = acc.querySelectorAll('.ing-pill');
+        pills.forEach(pill => {
+            const text = pill.textContent.toLowerCase();
+            const match = !q || text.includes(q);
+            pill.style.display = match ? 'inline-flex' : 'none';
+            if (match) visibleCount++;
+        });
+        acc.style.display = visibleCount > 0 ? 'block' : 'none';
+        if (q && visibleCount > 0) acc.open = true;
+    });
+}
+""")
+
 app, rt = fast_app(
-    pico=True,
+    pico=False,
     hdrs=(
         Meta(name="viewport", content="width=device-width, initial-scale=1"),
-        Meta(name="theme-color", content="#ef4444"),
+        Meta(name="theme-color", content="#d94e28"),
         Link(rel="manifest", href="/manifest.json"),
+        Link(rel="icon", href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>"),
+        Link(rel="preconnect", href="https://fonts.googleapis.com"),
+        Link(rel="preconnect", href="https://fonts.gstatic.com", crossorigin="anonymous"),
+        Link(rel="stylesheet", href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"),
         CUSTOM_CSS,
+        CLIENT_JS,
     )
 )
 
@@ -205,30 +815,46 @@ def get_categories() -> Dict[str, List[str]]:
 
 
 def render_pantry_chips(pantry: List[str], oob: bool = False):
-    attrs = {"id": "pantry-chips"}
+    attrs = {"id": "pantry-chips", "cls": "pantry-summary"}
     if oob:
         attrs["hx_swap_oob"] = "true"
     if pantry:
         return Div(
-            P(f"You have ", Strong(f"{len(pantry)} ingredients"), " selected in your pantry."),
-            Div(*[Span(f"✓ {item}", cls="badge badge-green") for item in sorted(pantry)]),
+            Div(
+                Span("Selected Pantry: ", Strong(f"{len(pantry)} ingredient{'s' if len(pantry) != 1 else ''}")),
+                Button(
+                    "Clear all",
+                    cls="btn btn-ghost btn-sm",
+                    hx_post="/pantry/clear",
+                    hx_include="#active-tab-input, #matched-filter-form",
+                    hx_swap="none",
+                ),
+                cls="pantry-summary-head"
+            ),
+            Div(*[Span(f"✓ {item}", cls="badge badge-green") for item in sorted(pantry)], cls="chips-wrap"),
             **attrs
         )
     return Div(
-        P("You have ", Strong("0 ingredients"), " selected in your pantry."),
-        Div("Your pantry is empty! Select ingredients in the sidebar checklist.", cls="badge badge-gray"),
+        Div(
+            Span("Selected Pantry: ", Strong("0 ingredients")),
+            cls="pantry-summary-head"
+        ),
+        Div(
+            Span("Your pantry is empty — check ingredients in the sidebar to match recipes.", cls="badge badge-gray"),
+            cls="chips-wrap"
+        ),
         **attrs
     )
 
 
 def render_stats(oob: bool = False):
     stats = db.get_stats()
-    attrs = {"id": "db-stats", "style": "font-size: 0.85rem; color: #64748b; margin-top: 0.5rem;"}
+    attrs = {"id": "db-stats", "cls": "stats-grid"}
     if oob:
         attrs["hx_swap_oob"] = "true"
     return Div(
-        "📊 Indexed Recipes: ", Strong(str(stats["recipes"])),
-        " | Unique Ingredients: ", Strong(str(stats["ingredients"])),
+        Div(Span(str(stats["recipes"]), cls="stat-num"), Span("Recipes", cls="stat-label"), cls="stat-box"),
+        Div(Span(str(stats["ingredients"]), cls="stat-num"), Span("Ingredients", cls="stat-label"), cls="stat-box"),
         **attrs
     )
 
@@ -243,6 +869,8 @@ def render_sidebar_categories(categories: Dict[str, List[str]], saved_pantry: se
         if not items:
             continue
         is_open = cat_name in ["🥩 Proteins", "🥦 Vegetables"]
+        selected_count = sum(1 for item in items if item in saved_pantry)
+        count_cls = "cat-count has-selected" if selected_count > 0 else "cat-count"
         checkboxes = [
             Label(
                 Input(
@@ -255,14 +883,19 @@ def render_sidebar_categories(categories: Dict[str, List[str]], saved_pantry: se
                     hx_include="#active-tab-input, #matched-filter-form",
                     hx_swap="none",
                 ),
-                item.title()
+                Span(item.title()),
+                cls="ing-pill"
             )
             for item in items
         ]
         accordions.append(
             Details(
-                Summary(Strong(cat_name)),
-                Div(*checkboxes, cls="cat-list"),
+                Summary(
+                    Span(cat_name),
+                    Span(f"{selected_count}/{len(items)}", cls=count_cls)
+                ),
+                Div(Div(*checkboxes, cls="cat-list"), cls="accordion-body"),
+                cls="accordion",
                 open=is_open
             )
         )
@@ -278,69 +911,97 @@ def render_sidebar(oob: bool = False):
         attrs["hx_swap_oob"] = "true"
 
     return Aside(
-        H3("🍳 Pantry Inventory", style="margin-bottom: 0.75rem;"),
-        Button(
-            "🗑️ Clear All",
-            cls="outline secondary",
-            style="width: 100%; margin-bottom: 0.75rem;",
-            hx_post="/pantry/clear",
-            hx_include="#active-tab-input, #matched-filter-form",
-            hx_swap="none",
+        Div(
+            H3("🍳 Pantry Chef", cls="sidebar-title"),
+            Button("✕", cls="btn btn-ghost btn-sm sidebar-close-btn", type="button", onclick="toggleSidebar(false)", aria_label="Close pantry sidebar"),
+            cls="sidebar-brand"
         ),
-        Details(
-            Summary("➕ Add Ingredient to Category"),
-            Form(
-                Label(
-                    "Category",
-                    Select(
-                        *[Option(c, value=c) for c in categories.keys()],
-                        name="category"
-                    )
-                ),
-                Label(
-                    "Ingredient Name",
-                    Input(type="text", name="name", placeholder="e.g. Coconut milk, Pork belly", required=True)
-                ),
-                Button("Add Ingredient", type="submit", style="width: 100%;"),
-                hx_post="/pantry/add",
+        Input(
+            type="search",
+            placeholder="Filter ingredients (e.g. garlic, pork)...",
+            cls="input pantry-filter-input",
+            oninput="filterPantryIngredients(this.value)",
+            aria_label="Filter pantry ingredients"
+        ),
+        Div(
+            Button(
+                "🗑️ Clear Pantry",
+                cls="btn btn-secondary btn-sm btn-full",
+                hx_post="/pantry/clear",
                 hx_include="#active-tab-input, #matched-filter-form",
                 hx_swap="none",
             ),
-            style="margin-bottom: 0.75rem;"
+            cls="sidebar-actions"
         ),
         render_sidebar_categories(categories, saved_pantry),
-        Hr(),
-        H4("⚙️ Channel Sync", style="margin-bottom: 0.5rem;"),
-        Form(
-            Label(
-                "YouTube Channel Link, @Handle, or Name",
-                Input(
-                    type="text",
-                    name="channel",
-                    value="https://www.youtube.com/@PanlasangPinoy",
-                    placeholder="URL, @handle, or name",
-                    required=True
-                )
+        Details(
+            Summary(Span("➕ Add Custom Ingredient"), Span("+", cls="cat-count")),
+            Div(
+                Form(
+                    Label(
+                        "Category",
+                        Select(
+                            *[Option(c, value=c) for c in categories.keys()],
+                            name="category",
+                            cls="select"
+                        ),
+                        cls="field-label"
+                    ),
+                    Label(
+                        "Ingredient Name",
+                        Input(type="text", name="name", placeholder="e.g. Coconut milk", required=True, cls="input"),
+                        cls="field-label",
+                        style="margin-top: 0.5rem;"
+                    ),
+                    Button("Add to Pantry", type="submit", cls="btn btn-primary btn-sm btn-full", style="margin-top: 0.65rem;"),
+                    hx_post="/pantry/add",
+                    hx_include="#active-tab-input, #matched-filter-form",
+                    hx_swap="none",
+                ),
+                cls="accordion-body"
             ),
-            Label(
-                "Videos to fetch",
-                Select(
-                    *[Option(str(n), value=str(n), selected=(n == 30)) for n in [10, 20, 30, 40, 50, 60]],
-                    name="limit"
-                )
-            ),
-            Button(
-                "📥 Sync Channel to Database",
-                Span(" ⏳", cls="htmx-indicator"),
-                type="submit",
-                style="width: 100%;"
-            ),
-            Div(id="sync-status", style="margin-top: 0.5rem; font-size: 0.85rem;"),
-            hx_post="/sync",
-            hx_target="#sync-status",
-            hx_include="#active-tab-input, #matched-filter-form",
+            cls="accordion"
         ),
-        render_stats(),
+        Div(
+            H4("⚙️ Channel Sync"),
+            Form(
+                Label(
+                    "Channel URL, @Handle, or Name",
+                    Input(
+                        type="text",
+                        name="channel",
+                        value="https://www.youtube.com/@PanlasangPinoy",
+                        placeholder="URL, @handle, or name",
+                        required=True,
+                        cls="input"
+                    ),
+                    cls="field-label"
+                ),
+                Label(
+                    "Videos to fetch",
+                    Select(
+                        *[Option(str(n), value=str(n), selected=(n == 30)) for n in [10, 20, 30, 40, 50, 60]],
+                        name="limit",
+                        cls="select"
+                    ),
+                    cls="field-label",
+                    style="margin-top: 0.5rem;"
+                ),
+                Button(
+                    "📥 Sync Channel",
+                    Span(" ⏳", cls="htmx-indicator"),
+                    type="submit",
+                    cls="btn btn-primary btn-sm btn-full",
+                    style="margin-top: 0.65rem;"
+                ),
+                Div(id="sync-status", style="margin-top: 0.45rem; font-size: 0.84rem;"),
+                hx_post="/sync",
+                hx_target="#sync-status",
+                hx_include="#active-tab-input, #matched-filter-form",
+            ),
+            render_stats(),
+            cls="sidebar-card"
+        ),
         **attrs
     )
 
@@ -354,14 +1015,14 @@ def render_pagination(current_page: int, total_items: int, items_per_page: int, 
     end_idx = min(current_page * items_per_page, total_items)
 
     prev_attrs = {
-        "cls": "outline",
+        "cls": "btn btn-secondary btn-sm",
         "disabled": (current_page <= 1),
         "hx_get": f"{base_url}&page={max(1, current_page - 1)}",
         "hx_target": "#tab-panel",
         "hx_swap": "outerHTML",
     }
     next_attrs = {
-        "cls": "outline",
+        "cls": "btn btn-secondary btn-sm",
         "disabled": (current_page >= total_pages),
         "hx_get": f"{base_url}&page={min(total_pages, current_page + 1)}",
         "hx_target": "#tab-panel",
@@ -372,13 +1033,13 @@ def render_pagination(current_page: int, total_items: int, items_per_page: int, 
         next_attrs["hx_include"] = include_selector
 
     return Div(
-        Button("⬅️ Previous", **prev_attrs),
+        Button("← Previous", **prev_attrs),
         Span(
             Strong(f"Page {current_page} of {total_pages}"),
-            f" (Showing {start_idx}–{end_idx} of {total_items})",
-            style="font-size: 0.9rem; color: #475569;"
+            f" · Showing {start_idx}–{end_idx} of {total_items}",
+            cls="pagination-info"
         ),
-        Button("Next ➡️", **next_attrs),
+        Button("Next →", **next_attrs),
         cls="pagination"
     )
 
@@ -390,21 +1051,23 @@ def render_matched_tab(min_match: int = 30, max_missing: int = 4, assume_staples
     filter_form = Form(
         Input(type="hidden", name="submitted", value="1"),
         Div(
-            Label(
-                f"Min Match % ({min_match}%)",
+            Div(
+                Div(Span("Min Match %", cls="field-label"), Span(f"{min_match}%", id="min-match-val", cls="range-val"), cls="range-header"),
                 Input(
                     type="range", name="min_match", min="10", max="100", step="10", value=str(min_match),
+                    oninput="document.getElementById('min-match-val').textContent = this.value + '%'",
                     hx_get="/tab/matched", hx_target="#tab-panel", hx_swap="outerHTML",
                     hx_include="#matched-filter-form", hx_trigger="change"
-                )
+                ),
             ),
-            Label(
-                f"Max Missing ({max_missing})",
+            Div(
+                Div(Span("Max Missing", cls="field-label"), Span(f"{max_missing}", id="max-missing-val", cls="range-val"), cls="range-header"),
                 Input(
                     type="range", name="max_missing", min="0", max="10", step="1", value=str(max_missing),
+                    oninput="document.getElementById('max-missing-val').textContent = this.value",
                     hx_get="/tab/matched", hx_target="#tab-panel", hx_swap="outerHTML",
                     hx_include="#matched-filter-form", hx_trigger="change"
-                )
+                ),
             ),
             Label(
                 Input(
@@ -412,8 +1075,8 @@ def render_matched_tab(min_match: int = 30, max_missing: int = 4, assume_staples
                     hx_get="/tab/matched", hx_target="#tab-panel", hx_swap="outerHTML",
                     hx_include="#matched-filter-form", hx_trigger="change"
                 ),
-                " Assume basic staples (oil, salt, pepper, water)",
-                style="display: flex; align-items: center; gap: 0.4rem; padding-bottom: 0.4rem;"
+                Span("Assume basic staples (oil, salt, pepper, water)"),
+                cls="staples-check"
             ),
             cls="filter-bar"
         ),
@@ -421,7 +1084,12 @@ def render_matched_tab(min_match: int = 30, max_missing: int = 4, assume_staples
     )
 
     if not recipes:
-        body = P("No recipes in local database yet! Click 'Sync Channel to Database' in the sidebar.", cls="badge badge-yellow")
+        body = Div(
+            Div("🍳", cls="empty-state-icon"),
+            H4("No recipes indexed yet"),
+            P("Use 'Channel Sync' in the sidebar or 'Live YouTube Search' to build your recipe database."),
+            cls="empty-state"
+        )
         return Div(filter_form, body, id="matched-content")
 
     results = matcher.rank_recipes(
@@ -433,6 +1101,20 @@ def render_matched_tab(min_match: int = 30, max_missing: int = 4, assume_staples
     )
 
     total_items = len(results)
+    if total_items == 0:
+        empty_msg = (
+            "Select a few ingredients in the Pantry sidebar to see recipes you can cook."
+            if not pantry
+            else "Try lowering Min Match % or increasing Max Missing ingredients."
+        )
+        body = Div(
+            Div("🥗", cls="empty-state-icon"),
+            H4("No matching recipes found"),
+            P(empty_msg),
+            cls="empty-state"
+        )
+        return Div(filter_form, body, id="matched-content")
+
     total_pages = max(1, math.ceil(total_items / ITEMS_PER_PAGE))
     page = max(1, min(page, total_pages))
     page_items = results[(page - 1) * ITEMS_PER_PAGE : page * ITEMS_PER_PAGE]
@@ -440,7 +1122,7 @@ def render_matched_tab(min_match: int = 30, max_missing: int = 4, assume_staples
     cards = []
     for r in page_items:
         badge_cls = "badge-green" if r["match_percentage"] >= 80 else ("badge-yellow" if r["match_percentage"] >= 50 else "badge-gray")
-        cookable = Span("🎉 Ready to Cook!", cls="badge badge-green") if r["is_cookable"] else ""
+        cookable = Span("🎉 Ready to Cook", cls="badge badge-green") if r["is_cookable"] else ""
         matched_badges = [Span(f"✓ {i}", cls="badge badge-green") for i in r["matched"]]
         missing_badges = [Span(f"✗ {i}", cls="badge badge-missing") for i in r["missing"]]
 
@@ -449,23 +1131,30 @@ def render_matched_tab(min_match: int = 30, max_missing: int = 4, assume_staples
 
         cards.append(
             Div(
-                Img(src=r["thumbnail_url"], alt=r["title"], cls="recipe-thumb"),
                 Div(
-                    H4(A(r["title"], href=yt_url, target="_blank"), style="margin-bottom: 0.35rem;"),
+                    Img(src=r["thumbnail_url"], alt=r["title"], cls="recipe-thumb", loading="lazy"),
+                    Span(f"{r['match_percentage']}% Match", cls=f"thumb-overlay-badge {badge_cls}"),
+                    cls="thumb-wrap"
+                ),
+                Div(
+                    H4(A(r["title"], href=yt_url, target="_blank"), cls="card-title"),
                     Div(
-                        Span(f"{r['match_percentage']}% Match", cls=f"badge {badge_cls}"),
                         Span(r["channel_name"], cls="badge badge-gray"),
                         cookable,
-                        style="margin-bottom: 0.5rem;"
+                        cls="card-badges"
                     ),
-                    Div(Strong("In your pantry: "), *matched_badges) if matched_badges else "",
-                    Div(Strong("Missing: "), *missing_badges) if missing_badges else "",
+                    Div(Span("In pantry:", cls="ing-row-label"), *matched_badges, cls="ing-row") if matched_badges else "",
+                    Div(Span("Missing:", cls="ing-row-label"), *missing_badges, cls="ing-row") if missing_badges else "",
                     Details(
                         Summary("📖 View Recipe Ingredients & Instructions"),
-                        Pre(desc_text, style="white-space: pre-wrap; font-size: 0.85rem; background: #f8fafc; padding: 0.75rem; border-radius: 6px;"),
-                        style="margin-top: 0.5rem;"
+                        Pre(desc_text, cls="recipe-pre"),
+                        cls="recipe-details"
                     ),
-                    A("▶️ Watch Video on YouTube", href=yt_url, target="_blank", role="button", cls="outline btn-inline"),
+                    Div(
+                        A("▶ Watch on YouTube", href=yt_url, target="_blank", cls="btn btn-secondary btn-sm"),
+                        cls="card-actions"
+                    ),
+                    cls="card-body"
                 ),
                 cls="recipe-card"
             )
@@ -474,7 +1163,7 @@ def render_matched_tab(min_match: int = 30, max_missing: int = 4, assume_staples
     base_url = f"/tab/matched?submitted=1&min_match={min_match}&max_missing={max_missing}&assume_staples={'true' if assume_staples else 'false'}"
     return Div(
         filter_form,
-        H4(f"Found {total_items} Matching Recipes", style="margin-bottom: 0.75rem;"),
+        Div(H3(f"Found {total_items} Matching Recipe{'s' if total_items != 1 else ''}"), cls="results-meta"),
         *cards,
         render_pagination(page, total_items, ITEMS_PER_PAGE, base_url),
         id="matched-content"
@@ -486,8 +1175,13 @@ def render_library_tab(q: str = "", channel: str = "All Channels", page: int = 1
 
     if not library_recipes:
         return Div(
-            H4("📚 Recipe Library (0 Total)"),
-            P("No recipes in your library yet! Use the sidebar 'Channel Sync' or 'Live YouTube Search' tab to add some.")
+            Div(
+                Div("📚", cls="empty-state-icon"),
+                H4("Your Recipe Library is empty"),
+                P("Use 'Channel Sync' in the sidebar or 'Live YouTube Search' to add cooking videos."),
+                cls="empty-state"
+            ),
+            id="library-content"
         )
 
     available_channels = ["All Channels"] + sorted({r["channel_name"] for r in library_recipes if r.get("channel_name")})
@@ -499,18 +1193,22 @@ def render_library_tab(q: str = "", channel: str = "All Channels", page: int = 1
                 "Search Library by title or ingredient",
                 Input(
                     type="search", name="q", value=q, placeholder="e.g. adobo, ampalaya, chicken",
+                    cls="input",
                     hx_get="/tab/library", hx_target="#tab-panel", hx_swap="outerHTML",
                     hx_include="#library-filter-form", hx_trigger="keyup changed delay:300ms, search"
-                )
+                ),
+                cls="field-label"
             ),
             Label(
                 "Filter by Channel",
                 Select(
                     *[Option(c, value=c, selected=(c == channel)) for c in available_channels],
                     name="channel",
+                    cls="select",
                     hx_get="/tab/library", hx_target="#tab-panel", hx_swap="outerHTML",
                     hx_include="#library-filter-form", hx_trigger="change"
-                )
+                ),
+                cls="field-label"
             ),
             cls="filter-bar"
         ),
@@ -541,27 +1239,31 @@ def render_library_tab(q: str = "", channel: str = "All Channels", page: int = 1
 
         cards.append(
             Div(
-                Img(src=r["thumbnail_url"], alt=r["title"], cls="recipe-thumb"),
                 Div(
-                    H4(A(r["title"], href=yt_url, target="_blank"), style="margin-bottom: 0.35rem;"),
-                    Span(r["channel_name"], cls="badge badge-gray"),
-                    Div(Strong(f"Ingredients ({len(ings)}): "), *ing_badges, style="margin-top: 0.4rem;") if ings else P("No specific ingredients parsed.", style="font-size: 0.85rem; color: #64748b;"),
+                    Img(src=r["thumbnail_url"], alt=r["title"], cls="recipe-thumb", loading="lazy"),
+                    cls="thumb-wrap"
+                ),
+                Div(
+                    H4(A(r["title"], href=yt_url, target="_blank"), cls="card-title"),
+                    Div(Span(r["channel_name"], cls="badge badge-gray"), cls="card-badges"),
+                    Div(Span(f"Ingredients ({len(ings)}):", cls="ing-row-label"), *ing_badges, cls="ing-row") if ings else P("No specific ingredients parsed.", style="font-size: 0.85rem; color: var(--text-muted); margin: 0;"),
                     Details(
                         Summary("📖 View Recipe Description"),
-                        Pre(desc_text, style="white-space: pre-wrap; font-size: 0.85rem; background: #f8fafc; padding: 0.75rem; border-radius: 6px;"),
-                        style="margin-top: 0.5rem;"
+                        Pre(desc_text, cls="recipe-pre"),
+                        cls="recipe-details"
                     ),
                     Div(
-                        A("▶️ Watch Video on YouTube", href=yt_url, target="_blank", role="button", cls="outline btn-inline"),
+                        A("▶ Watch on YouTube", href=yt_url, target="_blank", cls="btn btn-secondary btn-sm"),
                         Button(
                             "🗑️ Remove",
-                            cls="outline secondary btn-inline",
+                            cls="btn btn-danger-ghost btn-sm",
                             hx_delete=f"/library/{r['video_id']}",
                             hx_target=f"#lib-card-{r['video_id']}",
                             hx_swap="outerHTML",
                         ),
-                        style="margin-top: 0.5rem;"
-                    )
+                        cls="card-actions"
+                    ),
+                    cls="card-body"
                 ),
                 id=f"lib-card-{r['video_id']}",
                 cls="recipe-card"
@@ -570,12 +1272,22 @@ def render_library_tab(q: str = "", channel: str = "All Channels", page: int = 1
 
     import urllib.parse
     base_url = f"/tab/library?q={urllib.parse.quote(q)}&channel={urllib.parse.quote(channel)}"
+    body_content = cards if cards else [
+        Div(
+            Div("🔎", cls="empty-state-icon"),
+            H4("No recipes match your filter"),
+            P("Try clearing your search query or selecting 'All Channels'."),
+            cls="empty-state"
+        )
+    ]
     return Div(
-        H4(f"📚 Recipe Library ({len(library_recipes)} Total)", style="margin-bottom: 0.25rem;"),
-        P("Browse and search all cooking videos currently indexed in your database.", style="color: #64748b; font-size: 0.9rem;"),
         filter_form,
-        P(f"Showing ", Strong(str(total_items)), f" of {len(library_recipes)} recipes (10 per page)", style="font-size: 0.88rem; color: #64748b;"),
-        *cards,
+        Div(
+            H3(f"📚 Recipe Library ({len(library_recipes)} Total)"),
+            Span(f"Showing {total_items} of {len(library_recipes)}"),
+            cls="results-meta"
+        ),
+        *body_content,
         render_pagination(page, total_items, ITEMS_PER_PAGE, base_url),
         id="library-content"
     )
@@ -588,10 +1300,11 @@ def render_search_tab(page: int = 1):
     search_form = Form(
         Div(
             Label(
-                "Search query",
-                Input(type="text", name="q", value=last_q, placeholder="e.g. Chicken Sayote", required=True)
+                "Search YouTube for a recipe or ingredient combo",
+                Input(type="text", name="q", value=last_q, placeholder="e.g. Chicken Sayote", required=True, cls="input"),
+                cls="field-label"
             ),
-            Button("🔍 Search YouTube", Span(" ⏳", cls="htmx-indicator"), type="submit", style="width: auto; margin: 0;"),
+            Button("🔍 Search YouTube", Span(" ⏳", cls="htmx-indicator"), type="submit", cls="btn btn-primary"),
             cls="filter-bar",
             style="grid-template-columns: 1fr auto;"
         ),
@@ -602,9 +1315,13 @@ def render_search_tab(page: int = 1):
 
     if not results:
         return Div(
-            H4("Query YouTube Data API On-Demand", style="margin-bottom: 0.25rem;"),
-            P("Search for any specific recipe or ingredient combo and import it directly into your database.", style="color: #64748b; font-size: 0.9rem;"),
             search_form,
+            Div(
+                Div("🎬", cls="empty-state-icon"),
+                H4("Search YouTube On-Demand"),
+                P("Enter a dish or ingredient combo above to fetch recipes from YouTube and save them to your library."),
+                cls="empty-state"
+            ),
             id="search-content"
         )
 
@@ -623,11 +1340,11 @@ def render_search_tab(page: int = 1):
 
         saved_badge = Span("✓ In Library", cls="badge badge-green") if is_saved else ""
         action_btn = (
-            Button("✅ Already in Database", disabled=True, cls="btn-inline secondary")
+            Button("✅ Already in Database", disabled=True, cls="btn btn-secondary btn-sm")
             if is_saved
             else Button(
                 "💾 Save to Database",
-                cls="btn-inline",
+                cls="btn btn-primary btn-sm",
                 hx_post=f"/search/save/{vid}",
                 hx_target=f"#save-wrap-{vid}",
                 hx_swap="outerHTML",
@@ -636,22 +1353,40 @@ def render_search_tab(page: int = 1):
 
         cards.append(
             Div(
-                Img(src=item["thumbnail_url"], alt=item["title"], cls="recipe-thumb"),
                 Div(
-                    H4(A(item["title"], href=yt_url, target="_blank"), " ", saved_badge, style="margin-bottom: 0.25rem;"),
-                    P(f"Channel: {item['channel_name']}", style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.4rem;"),
-                    P(Strong(f"Parsed Ingredients ({len(ing_names)}): "), ", ".join(ing_names) if ing_names else "None detected", style="font-size: 0.9rem;"),
-                    Div(action_btn, id=f"save-wrap-{vid}"),
+                    Img(src=item["thumbnail_url"], alt=item["title"], cls="recipe-thumb", loading="lazy"),
+                    cls="thumb-wrap"
+                ),
+                Div(
+                    H4(A(item["title"], href=yt_url, target="_blank"), cls="card-title"),
+                    Div(
+                        Span(item["channel_name"], cls="badge badge-gray"),
+                        saved_badge,
+                        cls="card-badges"
+                    ),
+                    Div(
+                        Span(f"Parsed Ingredients ({len(ing_names)}):", cls="ing-row-label"),
+                        *([Span(name, cls="badge badge-gray") for name in ing_names] if ing_names else [Span("None detected", style="color: var(--text-muted); font-size: 0.84rem;")]),
+                        cls="ing-row"
+                    ),
+                    Div(
+                        Div(action_btn, id=f"save-wrap-{vid}"),
+                        A("▶ Watch on YouTube", href=yt_url, target="_blank", cls="btn btn-secondary btn-sm"),
+                        cls="card-actions"
+                    ),
+                    cls="card-body"
                 ),
                 cls="recipe-card"
             )
         )
 
     return Div(
-        H4("Query YouTube Data API On-Demand", style="margin-bottom: 0.25rem;"),
-        P("Search for any specific recipe or ingredient combo and import it directly into your database.", style="color: #64748b; font-size: 0.9rem;"),
         search_form,
-        P(f"Showing results for: ", Strong(last_q), f" ({total_items} videos found, 10 per page)", style="font-size: 0.9rem;"),
+        Div(
+            H3(f"Results for “{last_q}”"),
+            Span(f"{total_items} videos found"),
+            cls="results-meta"
+        ),
         *cards,
         render_pagination(page, total_items, ITEMS_PER_PAGE, "/tab/search?x=1"),
         id="search-content"
@@ -702,16 +1437,27 @@ def render_tab_panel(active_tab: str, **kwargs):
 def get():
     pantry = sorted(list(db.get_user_pantry()))
     return Title("Pantry Chef | YouTube Recipe Aggregator"), Div(
-        render_sidebar(),
-        Main(
-            H1("🍳 What Can I Cook Today?", style="margin-bottom: 0.5rem;"),
-            render_pantry_chips(pantry),
-            Br(),
-            render_tab_panel("matched"),
-            cls="main-content"
+        Div(id="sidebar-backdrop", cls="sidebar-backdrop", onclick="toggleSidebar(false)"),
+        Header(
+            Span("🍳 Pantry Chef", cls="mobile-brand"),
+            Button("🧺 Pantry", cls="btn btn-secondary btn-sm", type="button", onclick="toggleSidebar(true)"),
+            cls="mobile-header"
         ),
-        cls="app-layout",
-        id="app-shell"
+        Div(
+            render_sidebar(),
+            Main(
+                Div(
+                    H1("What Can I Cook Today?", cls="hero-title"),
+                    P("Match your kitchen ingredients against your indexed YouTube recipe library.", cls="hero-subtitle"),
+                    cls="hero-header"
+                ),
+                render_pantry_chips(pantry),
+                render_tab_panel("matched"),
+                cls="main-content"
+            ),
+            cls="app-layout",
+            id="app-shell"
+        )
     )
 
 
@@ -727,8 +1473,8 @@ def manifest():
         "short_name": "Pantry Chef",
         "start_url": "/",
         "display": "standalone",
-        "background_color": "#f8fafc",
-        "theme_color": "#ef4444",
+        "background_color": "#faf8f5",
+        "theme_color": "#d94e28",
     })
 
 
@@ -848,7 +1594,7 @@ def post(video_id: str):
             ingredients=target["parsed_ings"]
         )
     stats_oob = render_stats(oob=True)
-    btn = Div(Button("✅ Already in Database", disabled=True, cls="btn-inline secondary"), id=f"save-wrap-{video_id}")
+    btn = Div(Button("✅ Already in Database", disabled=True, cls="btn btn-secondary btn-sm"), id=f"save-wrap-{video_id}")
     return btn, stats_oob
 
 
