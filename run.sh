@@ -11,4 +11,4 @@ fi
 
 source .venv/bin/activate
 echo "[*] Launching Pantry Chef on http://localhost:8501 ..."
-streamlit run app.py
+python3 app.py

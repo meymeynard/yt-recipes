@@ -67,7 +67,7 @@ pip install -r requirements.txt
 Or directly:
 ```bash
 source .venv/bin/activate
-streamlit run app.py
+python3 app.py
 ```
 
 ---
@@ -85,7 +85,7 @@ streamlit run app.py
 ├── youtube_client.py   # YouTube Data API client (uploads playlistItems + search)
 ├── matcher.py          # Pantry intersection scoring & ranking algorithm
 ├── ingest.py           # CLI tool to crawl & index any YouTube channel
-├── app.py              # Streamlit web interface
+├── app.py              # FastHTML + htmx web interface (with PWA manifest)
 ├── data/               # Persistent storage volume for SQLite (recipes.db)
 └── run.sh              # Local virtualenv runner
 ```
@@ -104,4 +104,4 @@ python3 ingest.py --channel "Kuya Fern's Cooking" --limit 30
 # Or inside the running Docker container:
 docker exec -it pantry-chef python3 ingest.py --channel "Kuya Fern's Cooking" --limit 30
 ```
-*(You can also sync channels directly from the sidebar in the Streamlit UI!)*
+*(You can also sync channels directly from the sidebar in the web UI!)*
