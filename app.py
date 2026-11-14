@@ -140,12 +140,14 @@ def post(category: str, name: str, tab: str = "matched", min_match: int = 30, ma
 
 @rt("/sync")
 def post(channel: str, limit: int = 30, tab: str = "matched", min_match: int = 30, max_missing: int = 4, assume_staples: str = ""):
-    count = ingest.ingest_channel(channel, max_videos=limit)
-    msg = (
-        badge(f"✅ Synced {count} videos into database!", "green")
-        if count > 0
-        else badge(f"❌ Could not find channel: '{channel}'", "missing")
-    )
+    result = ingest.ingest_channel(channel, max_videos=limit)
+    if not result["found"]:
+        msg = badge(f"❌ Could not find channel: '{channel}'", "missing")
+    else:
+        saved = result["saved"]
+        skipped = result["skipped"]
+        detail = f" (skipped {skipped} non-recipe)" if skipped else ""
+        msg = badge(f"✅ Synced {saved} recipe{'s' if saved != 1 else ''}{detail}", "green")
     if tab == "matched":
         return msg, _stats_oob(), _matched_oob(min_match, max_missing, assume_staples)
     return msg, _stats_oob()
